@@ -51,9 +51,9 @@ class Image:
                 sigmaX = 1.6 * self.kparam ** i) 
                 for i in range(ngrad)]
                 for j in range(len(self.scales))]
-        self.DoGs = [[octaves[j][i] - octaves[j][i + 1] 
-            for i in range(ngrad - 1)]
-            for j in range(len(self.scales))]
+            self.DoGs = [[octaves[j][i] - octaves[j][i + 1] 
+                for i in range(ngrad - 1)]
+                for j in range(len(self.scales))]
  
  
     def show_DoG(self, i, j):
