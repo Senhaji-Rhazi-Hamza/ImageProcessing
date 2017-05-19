@@ -7,8 +7,8 @@ class SIFT:
     def __init__(self):
         self.k = math.sqrt(2)
         # self.sigma = 1.6
-        s = math.sqrt(2)
-        self.sigma0 = [s/2, s, 2 * s, 4 * s]
+        self.sigma = math.sqrt(2)
+#        self.sigma0 = [s/2, s, 2 * s, 4 * s]
         self.scaleLvl = 5
         self.octaveLvl = 4
         self.DoGLvl = 4
@@ -27,7 +27,7 @@ class SIFT:
             for i in range(self.octaveLvl)]
         # apply gaussian filter on pyramide to generate different octave/scales 
         self.octaves = [[cv2.GaussianBlur(pyramide[j], ksize = (0, 0),
-            sigmaX = self.sigma0[j] * self.k ** i, sigmaY = 0) 
+            sigmaX = (self.sigma * 2 ** j) * self.k ** i, sigmaY = 0) 
             for i in range(self.scaleLvl)] 
             for j in range(self.octaveLvl)]
  
