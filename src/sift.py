@@ -18,11 +18,10 @@ class SIFT:
     def extract_features(self, image):
         pyramide = self.build_pyramid(image)
         octaves = self.build_octaves(pyramide)
-        self.show_images(octaves, 1, self.scaleLvl)
         DoG = self.build_DoG(octaves)
-        self.show_images(DoG, self.octaveLvl, self.DoGLvl)
-#        extremum = self.compute_extrema(DoG)
-#        self.show_images(extremum, self.octaveLvl, 1)
+        extremum = self.compute_extrema(DoG)
+        self.save_images(extremum, self.octaveLvl, self.DoGLvl, "Extremum")
+        self.show_images(extremum, self.octaveLvl, self.DoGLvl)
     
 
     # generate pyramide (octaveLvl different sizes):
@@ -41,25 +40,37 @@ class SIFT:
         return octaves
 
     def build_DoG(self, octaves):
-        DoG = [[octaves[i][j + 1] - octaves[i][j] 
+        o = [[octaves[i][j].astype(np.int16)
+            for j in range(self.scaleLvl)]
+            for i in range(self.octaveLvl)]
+
+        DoG = [[abs(o[i][j + 1] - o[i][j]).astype(np.uint8)
             for j in range(self.DoGLvl)]
             for i in range(self.octaveLvl)]
         return DoG
 
     def compute_extrema(self, DoG):
-        extremum = [DoG[i][0].copy() for i in range(self.octaveLvl)]
+        extremum = [[DoG[i][j].copy()
+                for j in range(self.DoGLvl)]
+                for i in range(self.octaveLvl)]
         for i in range (self.octaveLvl):
-            for j in range (1, self.DoGLvl - 1):
+            for j in range (self.DoGLvl):
                 img = DoG[i][j]
-                imgh = DoG[i][j + 1]
-                imgb = DoG[i][j - 1]
+                imgh = None
+                imgb = None
+                if j < self.DoGLvl - 1:
+                    imgh = DoG[i][j + 1]
+                if j > 0:
+                    imgb = DoG[i][j - 1]
                 for k in range (1, img.shape[0] - 1):
                     for l in range (1, img.shape[1] - 1):
-                        m = np.concatenate((imgh[k - 1 : k + 2, l - 1 : l + 2],
-                                imgb[k - 1 : k + 2, l - 1 : l + 2]))
-                        m = np.concatenate((m, img[k - 1: k + 2, l - 1 : l + 2]))
+                        m = img[k - 1: k + 2, l - 1 : l + 2]
+                        if imgh is not None:
+                            m = np.concatenate((m, imgh[k - 1 : k + 2, l - 1 : l + 2]))
+                        if imgb is not None:
+                            m = np.concatenate((m, imgb[k - 1 : k + 2, l - 1 : l + 2]))
                         if img[k, l] == m.min() or img[k, l] == m.max():
-                            extremum[i][k, l] = 255
+                            extremum[i][j][k, l] = 255
         return extremum
 
     def show_images(self, images, n, m):
@@ -68,14 +79,16 @@ class SIFT:
                 \nPress 'q' to exit.")
         for i in range (n):
             for j in range (m):
-                if m == 1:
-                    im = images[i]
-                else:
-                    im = images[i][j]
                 img = 'image [' + str(i) + '][' + str(j) + ']'
-                cv2.imshow(img, im)
+                cv2.imshow(img, images[i][j])
                 if cv2.waitKey(0) == 113:
                     cv2.destroyAllWindows()
                     return
                 cv2.destroyAllWindows()
  
+    def save_images(self, images, n, m, name):
+        for i in range (n):
+            for j in range (m):
+                img = "ressources/" + name + '[' + \
+                        str(i) + '][' + str(j) + '].jpg'
+                cv2.imwrite(img, images[i][j])
