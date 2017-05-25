@@ -17,13 +17,13 @@ class SIFT:
         pyramide = self.build_pyramid(image)
         octaves = self.build_octaves(pyramide)
         DoG = self.build_DoG(octaves)
-        self.show_images(DoG)
+        # self.show_images(DoG)
         # extremum = self.compute_extrema(DoG)
         # self.save_images(extremum, self.octaveLvl, self.DoGLvl, "Extremum")
-        # self.show_images(extremum, self.octaveLvl, self.DoGLvl)
+        # self.show_images(extremum) 
     
 
-    # generate pyramide (octaveLvl different sizes):
+    # build pyramide (octaveLvl different sizes):
     def build_pyramid(self, image):
         pyramide = [cv2.resize(image, None, fx = 2 ** -(i), 
             fy = 2 ** -(i), interpolation = cv2.INTER_CUBIC) 
@@ -38,18 +38,18 @@ class SIFT:
             for i in range(self.octaveLvl)]
         return octaves
 
+    # build differenc of gaussians
     def build_DoG(self, octaves):
-        DoG = [[abs(octaves[i][j + 1].astype(np.int16) \
-                - octaves[i][j].astype(np.int16) \
-                ).astype(np.uint8)
-            for j in range(self.DoGLvl)]
-            for i in range(self.octaveLvl)]
+        DoG = [[cv2.subtract(octaves[i][j + 1], octaves[i][j])
+                for j in range(self.DoGLvl)]
+                for i in range(self.octaveLvl)]
         return DoG
 
     def compute_extrema(self, DoG):
-        extremum = [[DoG[i][j].copy()
+        extremum = [[np.zeros(shape=DoG[i][j].shape)
                 for j in range(self.DoGLvl)]
                 for i in range(self.octaveLvl)]
+        self.show_images(extremum, 1, 1)
         for i in range (self.octaveLvl):
             for j in range (self.DoGLvl):
                 img = DoG[i][j]
