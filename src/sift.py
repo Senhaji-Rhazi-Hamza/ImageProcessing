@@ -17,9 +17,10 @@ class SIFT:
         :param image: np.array,
         :rtype: np array
         """
-        pyramide = self.build_pyramid(image)
-        octaves = self.build_octaves(pyramide)
-        DoG = self.build_DoG(octaves)
+        pyramid = self.build_pyramid(image)
+        self.show_images(pyramid, 'pyramid')
+        # octaves = self.build_octaves(pyramid)
+        # DoG = self.build_DoG(octaves)
         # self.show_images(DoG)
         # extremum = self.compute_extrema(DoG)
         # self.save_images(extremum, self.octaveLvl, self.DoGLvl, "Extremum")
@@ -35,10 +36,11 @@ class SIFT:
         :param image: np.array
         :rtype: [np.array] 
         """
-        pyramide = [cv2.resize(image, None, fx = 2 ** -(i), 
-            fy = 2 ** -(i), interpolation = cv2.INTER_CUBIC) 
-            for i in range(self.octaveLvl)]
-        return pyramide
+        pyramid = [cv2.resize(image, None, fx = 2 ** i, 
+            fy = 2 ** i, interpolation = cv2.INTER_LINEAR) 
+            for i in range(1, -self.octaveLvl, -1)]
+        print("pyramid length: {}".format(len(pyramid)))
+        return pyramid
 
     def build_octaves(self, pyramid):
         """Apply Gaussian function with different scales to all levels of \
@@ -97,30 +99,44 @@ class SIFT:
                             extremum[i][j][k, l] = 255
         return extremum
 
-    def show_images(self, images, n = 0, m = 0):
+    def __show_images(self, images, title, n = 0):
+        """Helper method, shows a series of images
+        
+        :param images: [np.images]
+        :rtype: Int, 1 if stopped, 0 if not"""
+        if n == 0:
+            n = len(images)
+        for i in range (n):
+            img_title = title + '[{}]'.format(i)
+            cv2.imshow(img_title, images[i])
+            if cv2.waitKey(0) == 113:
+                cv2.destroyAllWindows()
+                return 1
+            cv2.destroyAllWindows()
+        return 0
+
+
+    def show_images(self, images, title = 'Image', n = 0, m = 0):
         """Show n * m images. If a length is not specified, it will take the \
                 maximum value possible. 
 
         :param images: [[np.array]]
         :param n: length of first list
         :param m: length of second list
+        :rtype: None
         """
-        print("Showing a group of images. \
-                \nPress any key to show next image.\
+        print("Showing a group of images.\nPress any key to show next image.\
                 \nPress 'q' to exit.")
         if n == 0:
             n = len(images)
         if m == 0:
-            m = len(images[0])
+            self.__show_images(images, title)
+            return
         for i in range (n):
-            for j in range (m):
-                img = 'image [' + str(i) + '][' + str(j) + ']'
-                cv2.imshow(img, images[i][j])
-                if cv2.waitKey(0) == 113:
-                    cv2.destroyAllWindows()
-                    return
-                cv2.destroyAllWindows()
- 
+            img_title = title + '[{}]'.format(i)
+            if self.__show_images(images[i]) == 1:
+                return 
+            
     def save_images(self, images, n = 0, m = 0, name = "image"):
         """Save n * m images. If a length is not specified, it will take the \
                 maximum value possible. 

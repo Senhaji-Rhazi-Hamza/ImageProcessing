@@ -9,9 +9,8 @@ def parse_arguments(argv):
     n = len(argv)
     sigma, k = 1.6, math.sqrt(2)
     if n < 2:
-        print("Usage: python {} image_path \
-                [-s value] [-k value]".format(argv[0]))
-        exit(1)
+        print("Usage: python {} image_path [-s value] [-k value]".format(argv[0]))
+        sys.exit(1)
     if n > 6:
         if argv[2] == '-s' and argv[4] == '-k':
             sigma = float(argv[3])
@@ -24,7 +23,7 @@ def parse_arguments(argv):
             sigma = float(argv[3])
         if argv[2] == '-k':
             k = float(argv[3])
-   return sigma, k 
+    return sigma, k 
 
 def main(argv):
     sigma, k = parse_arguments(argv)
