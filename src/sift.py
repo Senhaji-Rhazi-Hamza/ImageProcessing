@@ -18,11 +18,9 @@ class SIFT:
         :rtype: np array
         """
         pyramid = self.build_pyramid(image)
-        self.show_images(pyramid, 'pyramid')
-        # octaves = self.build_octaves(pyramid)
-        # DoG = self.build_DoG(octaves)
-        # self.show_images(DoG)
-        # extremum = self.compute_extrema(DoG)
+        octaves = self.build_octaves(pyramid)
+        DoG = self.build_DoG(octaves)
+        extrema = self.compute_extrema(DoG)
         # self.save_images(extremum, self.octaveLvl, self.DoGLvl, "Extremum")
         # self.show_images(extremum) 
     
@@ -39,7 +37,6 @@ class SIFT:
         pyramid = [cv2.resize(image, None, fx = 2 ** i, 
             fy = 2 ** i, interpolation = cv2.INTER_LINEAR) 
             for i in range(1, -self.octaveLvl, -1)]
-        print("pyramid length: {}".format(len(pyramid)))
         return pyramid
 
     def build_octaves(self, pyramid):
@@ -56,7 +53,6 @@ class SIFT:
             for i in range(self.octaveLvl)]
         return octaves
 
-    # build differenc of gaussians
     def build_DoG(self, octaves):
         """Build Difference of Gaussians (DoG) from octaves. There are \
                 different scales for a specific octave, The DoG of level i is \
@@ -70,34 +66,31 @@ class SIFT:
 
     def compute_extrema(self, DoG):
         """Computes extrema (minima and maxima) between the 27, 18 or 9 \
-                neighbours depending on the scale level. 
+                neighbours depending on the scale level for all octaves. 
         
         :param DoG: [[np.array]]
-        :rtype: np.array(x, y, sigma, octave)
+        :rtype: np.array(octave, scale, (x, y))
         """
-        extremum = [[np.zeros(shape=DoG[i][j].shape)
-                for j in range(self.DoGLvl)]
-                for i in range(self.octaveLvl)]
-        self.show_images(extremum, 1, 1)
+        extrema = []
         for i in range (self.octaveLvl):
+            extrema.append([])
             for j in range (self.DoGLvl):
+                extrema[i].append([])
                 img = DoG[i][j]
-                imgh = None
-                imgb = None
-                if j < self.DoGLvl - 1:
-                    imgh = DoG[i][j + 1]
-                if j > 0:
-                    imgb = DoG[i][j - 1]
+                img_top = DoG[i][j + 1] if j < self.DoGLvl - 1 else None
+                img_bot = DoG[i][j - 1] if j > 0 else None
                 for k in range (1, img.shape[0] - 1):
                     for l in range (1, img.shape[1] - 1):
                         m = img[k - 1: k + 2, l - 1 : l + 2]
-                        if imgh is not None:
-                            m = np.concatenate((m, imgh[k - 1 : k + 2, l - 1 : l + 2]))
-                        if imgb is not None:
-                            m = np.concatenate((m, imgb[k - 1 : k + 2, l - 1 : l + 2]))
+                        if img_top is not None:
+                            m = np.concatenate((m, 
+                                img_top[k - 1 : k + 2, l - 1 : l + 2]))
+                        if img_bot is not None:
+                            m = np.concatenate((m,
+                                img_bot[k - 1 : k + 2, l - 1 : l + 2]))
                         if img[k, l] == m.min() or img[k, l] == m.max():
-                            extremum[i][j][k, l] = 255
-        return extremum
+                            extrema[i][j].append((k, l))
+        return extrema
 
     def __show_images(self, images, title, n = 0):
         """Helper method, shows a series of images
