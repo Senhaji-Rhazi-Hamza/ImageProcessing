@@ -34,18 +34,23 @@ def parse_arguments(argv):
 def test(argv):
     sigma, k = parse_arguments(argv)
     sift = SIFT(sigma, k)
-    img = cv2.imread(argv[1])
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.imread(argv[1], 0)
     pyramid = sift.build_pyramid(img)
     octaves = sift.build_octaves(pyramid)
     DoG = sift.build_DoG(octaves)
     extrema = sift.compute_extrema(DoG)
+    extrema1 = sift.remove_low_contrast(DoG, extrema)
+    extrema2 = sift.remove_curvature(DoG, extrema1)
     for i in range (sift.octaveLvl):
         for j in range (sift.DoGLvl):
             print('pixels in image: {}'.format(DoG[i][j].shape[0] *
                 DoG[i][j].shape[1]))
             print('number of extrema in [{}][{}] = {}'
                     .format(i, j, len(extrema[i][j]) // 2))
+            print('number of extrema1 in [{}][{}] = {}'
+                    .format(i, j, len(extrema1[i][j]) // 2))
+            print('number of extrema2 in [{}][{}] = {}'
+                    .format(i, j, len(extrema2[i][j]) // 2))
 
 
 if __name__ == "__main__" :
