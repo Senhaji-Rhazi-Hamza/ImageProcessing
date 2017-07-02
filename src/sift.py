@@ -1,4 +1,6 @@
 import numpy as np
+# import src.differentiate as nd #uncomment for testing
+import differentiate as nd  #comment for testing
 import cv2
 import math
 
@@ -10,7 +12,7 @@ class SIFT:
         self.scaleLvl = 5
         self.octaveLvl = 4
         self.DoGLvl = self.scaleLvl - 1
-
+   
     def extract_features(self, image):
         """Extract SIFT features from image.
 
@@ -21,8 +23,10 @@ class SIFT:
         octaves = self.build_octaves(pyramid)
         DoG = self.build_DoG(octaves)
         extrema = self.compute_extrema(DoG)
+        extrema1 = self.remove_low_contrast(DoG, extrema)
+        extrema2 = self.remove_curvature(DoG, extrema1)
         # self.save_images(extremum, self.octaveLvl, self.DoGLvl, "Extremum")
-        # self.show_images(extremum) 
+        self.show_images(DoG) 
     
 
     def build_pyramid(self, image):
@@ -66,10 +70,11 @@ class SIFT:
 
     def compute_extrema(self, DoG):
         """Computes extrema (minima and maxima) between the 27, 18 or 9 \
-                neighbours depending on the scale level for all octaves. 
+                neighbours depending on the scale level for all octaves. \
+                for each (octave, scale) it computes a list of positions.
         
         :param DoG: [[np.array]]
-        :rtype: np.array(octave, scale, (x, y))
+        :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
         """
         extrema = []
         for i in range (self.octaveLvl):
@@ -91,7 +96,61 @@ class SIFT:
                         if img[k, l] == m.min() or img[k, l] == m.max():
                             extrema[i][j].append((k, l))
         return extrema
-
+    def remove_low_contrast(self, DoG, extrema):
+        """Removes low contrast in extrema points.
+        
+        :param DoG: [[np.array]]
+        :param extrema: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)] 
+        :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
+        """
+        ext = []
+        for i in range(self.octaveLvl):
+            ext.append([])
+            D = np.array(DoG[i])
+            grad = np.array(np.gradient(D))
+            hess = nd.hessian(D)
+            for j in range(self.DoGLvl):
+                ext[i].append([])
+                for x, y in extrema[i][j]:
+                    g = grad[:, j, x, y]
+                    h = hess[:, :, j, x, y]
+                    if np.linalg.det(h) == 0:
+                        continue
+                    else:
+                        e = -np.linalg.inv(h).dot(g)
+                    e_j, e_x, e_y = j, x, y
+                    if (e > 128).any():
+                        continue
+                    d = D[e_j, e_x, e_y] + 0.5 * g.T.dot(e)
+                    if d > 255 * 0.03:
+                        ext[i][j].append((x, y))
+        return ext
+ 
+    def remove_curvature(self, DoG, extrema):
+        """Removes low contrast in extrema points.
+        
+        :param DoG: [[np.array]]
+        :param extrema: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)] 
+        :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
+        """
+        ext = []
+        tresh = (11 * 11) / 10
+        for i in range(self.octaveLvl):
+            ext.append([])
+            D = np.array(DoG[i])
+            hess = nd.hessian(D)
+            for j in range(self.DoGLvl):
+                ext[i].append([])
+                for x, y in extrema[i][j]:
+                    h = hess[:, :, j, x, y]
+                    det = np.linalg.det(h) 
+                    if det <= 0:
+                        ext[i][j].append((x, y))
+                        continue
+                    if (np.trace(h) ** 2) / det <= tresh:
+                        ext[i][j].append((x, y))
+        return ext
+ 
     def __show_images(self, images, title, n = 0):
         """Helper method, shows a series of images
         
@@ -122,12 +181,12 @@ class SIFT:
                 \nPress 'q' to exit.")
         if n == 0:
             n = len(images)
-        if m == 0:
+        elif n == -1:
             self.__show_images(images, title)
             return
         for i in range (n):
             img_title = title + '[{}]'.format(i)
-            if self.__show_images(images[i]) == 1:
+            if self.__show_images(images[i], img_title) == 1:
                 return 
             
     def save_images(self, images, n = 0, m = 0, name = "image"):
