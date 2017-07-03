@@ -167,7 +167,7 @@ class SIFT:
         return 0
 
 
-    def show_images(self, images, title = 'Image', n = 0, m = 0):
+    def show_images(self, images, n = 0, m = 0, title = 'Image'):
         """Show n * m images. If a length is not specified, it will take the \
                 maximum value possible. 
 
@@ -188,7 +188,7 @@ class SIFT:
             if self.__show_images(images[i], img_title) == 1:
                 return 
             
-    def save_images(self, images, n = 0, m = 0, name = "image"):
+    def save_images(self, images, n = 0, m = 0, title = "Image"):
         """Save n * m images. If a length is not specified, it will take the \
                 maximum value possible. 
 
@@ -202,8 +202,8 @@ class SIFT:
             m = len(images[0])
         for i in range (n):
             for j in range (m):
-                img = "ressources/" + name + '[' + \
-                        str(i) + '][' + str(j) + '].jpg'
-                cv2.imwrite(img, images[i][j])
+                img_path = 'ressources/{}[{}][{}].jpg'.format(title, i, j)
+                print(img_path)
+                cv2.imwrite(img_path, images[i][j])
         print(n * m, "images saved successfully")
 
