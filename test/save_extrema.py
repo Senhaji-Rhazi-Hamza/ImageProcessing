@@ -39,24 +39,31 @@ def test(argv):
     octaves = sift.build_octaves(pyramid)
     DoG = sift.build_DoG(octaves)
     extrema = sift.compute_extrema(DoG)
-#    extrema1 = sift.remove_low_contrast(DoG, extrema)
-    extrema1 = sift.remove_curvature(DoG, extrema)
+    extrema1 = sift.remove_low_contrast(DoG, extrema)
+    extrema2 = sift.remove_curvature(DoG, extrema1)
     imgs = []
     imgs1 = []
+    imgs2 = []
     for i in range(sift.octaveLvl):
         imgs.append([])
         imgs1.append([])
+        imgs2.append([])
         for j in range(sift.DoGLvl):
             imgs[i].append([])
             imgs1[i].append([])
+            imgs2[i].append([])
             imgs[i][j] = np.zeros(shape = DoG[i][j].shape)
             imgs1[i][j] = np.zeros(shape = DoG[i][j].shape)
+            imgs2[i][j] = np.zeros(shape = DoG[i][j].shape)
             for x, y in extrema[i][j]:
                 imgs[i][j][x, y] = 255
             for x, y in extrema1[i][j]:
                 imgs1[i][j][x, y] = 255
+            for x, y in extrema2[i][j]:
+                imgs2[i][j][x, y] = 255
     sift.save_images(imgs, name = 'extrema') 
     sift.save_images(imgs1, name = 'extrema1')
+    sift.save_images(imgs2, name = 'extrema2')
 
 
 if __name__ == "__main__" :
