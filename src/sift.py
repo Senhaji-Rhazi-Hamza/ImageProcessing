@@ -1,5 +1,5 @@
 import numpy as np
-import src.differentiate as nd #uncomment for testing
+#import src.differentiate as nd #uncomment for testing
 # import differentiate as nd  #comment for testing
 import cv2
 import math
@@ -67,7 +67,18 @@ class SIFT:
                 for j in range(self.DoGLvl)]
                 for i in range(self.octaveLvl)]
         return DoG
-
+    def compute_extrema2(self, DoG):
+      extrema = np.array([[extremsi(Dog[i], j) for j in range(self.DoGLvl - 1)] for i in range(self.octavelvl - 1)])
+      extrema = np.array([extrema[i].reshape(1,np.product(extrema[i].shape)) for i in range(self.octavelvl - 1)])
+      return extrema 
+    def extremsi(DoGi, j):
+        imgs = np.array([DoGi[j + k] for k in range(-1,2) if ( ( (j + k) >= 0) and ((j + k) < self.DoGLvl - 1))])
+        eximgs = np.array([imgs[i][k - 1 : k + 2, l - 1 : l + 2] for i in range(imgs.shape[0])])
+        a = np.array([[(j, k, l) 
+        for l in range(1, img.shape[1] - 1)] 
+         for k in range(1, img.shape[0] - 1) 
+           if (DoGi[j][k, l] == eximgs.min() or (DoGi[j][k, l] == eximgs.max()) )])
+        return np.reshape(a, (1,np.product(a.shape)))
     def compute_extrema(self, DoG):
         """Computes extrema (minima and maxima) between the 27, 18 or 9 \
                 neighbours depending on the scale level for all octaves. \
@@ -94,7 +105,7 @@ class SIFT:
                             m = np.concatenate((m,
                                 img_bot[k - 1 : k + 2, l - 1 : l + 2]))
                         if img[k, l] == m.min() or img[k, l] == m.max():
-                            extrema[i][j].append((k, l))
+                            extrema[i].append((j ,k, l))
         return extrema
 
 
