@@ -100,6 +100,7 @@ class SIFT:
                             extrema[i].append((j, k, l))
             extrema[i] = np.array(extrema[i])
         return extrema
+
  
     def remove_low_contrast_opt(self, DoGs, extrema):
         """Removes low contrast in extrema points.
@@ -118,19 +119,19 @@ class SIFT:
             hessian = np.transpose(hessian, (2, 3, 4, 0, 1))
             det = np.linalg.det(hessian)
             j, y, x = np.array(np.where(det != 0))
+            ext[i] = hp.intersect(extrema[i], np.array([j, y, x]).T)
             grad = gradient[j, y, x]
             hess = hessian[j, y, x]
             D = D[j, y, x]
             e = np.linalg.solve(hess, grad)
-            i1 = np.where(np.all(np.abs(e) < 0.5, axis = 1))
-            print(i1)
+            i1 = np.where(np.all(np.abs(e) < 0.5, axis = 1))[0]
             d = np.empty(e.shape[0])
             for k in range(e.shape[0]):
                 d[k] = 0.5 * grad[k].dot(e[k])
             d += D 
             i2 = np.where(d > 0.03)[0]
             i3 = np.intersect1d(i1, i2)
-            ext[i] = extrema[i][i3]
+            ext[i] = hp.intersect(ext[i], np.array([j[i3], y[i3], x[i3]]).T)
         return ext
  
     def remove_low_contrast(self, DoGs, extrema):
@@ -146,6 +147,7 @@ class SIFT:
             ext.append([])
             D = np.array(DoGs[i])
             grad = np.array(np.gradient(D))
+            # grad = self.gradients[i]
             hess = hp.hessian(D)
             for j, x, y in extrema[i]:
                 g = grad[:, j, x, y]

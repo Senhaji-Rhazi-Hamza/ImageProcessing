@@ -23,7 +23,19 @@ def intersect(A, B):
     nrows, ncols = A.shape
     dtype={'names':['f{}'.format(i) for i in range(ncols)], \
             'formats':ncols * [A.dtype]}
-    C = A.copy()
-    C = np.intersect1d(C.view(dtype), B.view(dtype))
+    C1 = A.copy()
+    C2 = B.copy()
+    C = np.intersect1d(C1.view(dtype), C2.view(dtype))
     return C.view(A.dtype).reshape(-1, ncols)
+
+
+def diff(A, B):
+    nrows, ncols = A.shape
+    dtype={'names':['f{}'.format(i) for i in range(ncols)], \
+            'formats':ncols * [A.dtype]}
+    C1 = A.copy()
+    C2 = B.copy()
+    C = np.setdiff1d(C1.view(dtype), C2.view(dtype))
+    return C.view(A.dtype).reshape(-1, ncols)
+
 
