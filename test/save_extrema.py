@@ -31,33 +31,38 @@ def parse_arguments(argv):
     return sigma, k
 
 
+def save_extremas(sift, DoG, extremas, n, m, title = 'extrema'):
+    imgs = []
+    for i in range(n):
+        imgs.append([])
+        for j in range(m):
+            imgs[i].append([])
+            imgs[i][j] = np.zeros(shape = DoG[i][j].shape)
+            for x, y in extremas[i][j]:
+                imgs[i][j][x, y] = 255
+    sift.save_images(imgs, title = title) 
+
+
+
 def test(argv):
     sigma, k = parse_arguments(argv)
     sift = SIFT(sigma, k)
     img = cv2.imread(argv[1], 0)
     pyramid = sift.build_pyramid(img)
+    print('pyramid built')
     octaves = sift.build_octaves(pyramid)
+    print('octaves built')
     DoG = sift.build_DoG(octaves)
+    print('DoG built')
     extrema = sift.compute_extrema(DoG)
-#    extrema1 = sift.remove_low_contrast(DoG, extrema)
-    extrema1 = sift.remove_curvature(DoG, extrema)
-    imgs = []
-    imgs1 = []
-    for i in range(sift.octaveLvl):
-        imgs.append([])
-        imgs1.append([])
-        for j in range(sift.DoGLvl):
-            imgs[i].append([])
-            imgs1[i].append([])
-            imgs[i][j] = np.zeros(shape = DoG[i][j].shape)
-            imgs1[i][j] = np.zeros(shape = DoG[i][j].shape)
-            for x, y in extrema[i][j]:
-                imgs[i][j][x, y] = 255
-            for x, y in extrema1[i][j]:
-                imgs1[i][j][x, y] = 255
-    sift.save_images(imgs, name = 'extrema') 
-    sift.save_images(imgs1, name = 'extrema1')
-
+    print('extrema computed')
+    extrema1 = sift.remove_low_contrast(DoG, extrema)
+    print('extremas with low contrast removed')
+    extrema2 = sift.remove_curvature(DoG, extrema1)
+    print('extremas with high curvatures removed')
+    save_extremas(sift, DoG, extrema, 1, 1, 'extremums/ext')
+    save_extremas(sift, DoG, extrema1, 1, 1, 'extremums/ext1')
+    save_extremas(sift, DoG, extrema2, 1, 1, 'extremums/ext2')
 
 if __name__ == "__main__" :
     test(sys.argv[:])
