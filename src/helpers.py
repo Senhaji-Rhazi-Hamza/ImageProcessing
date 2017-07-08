@@ -18,3 +18,12 @@ def hessian(x):
         for l, grad_kl in enumerate(tmp_grad):
             hessian[k, l, :, :] = grad_kl
     return hessian
+
+def intersect(A, B):
+    nrows, ncols = A.shape
+    dtype={'names':['f{}'.format(i) for i in range(ncols)], \
+            'formats':ncols * [A.dtype]}
+    C = A.copy()
+    C = np.intersect1d(C.view(dtype), B.view(dtype))
+    return C.view(A.dtype).reshape(-1, ncols)
+

@@ -1,12 +1,15 @@
 import numpy as np
-#import src.differentiate as nd #uncomment for testing
-# import differentiate as nd  #comment for testing
 import cv2
 import math
+from time import time
+from numpy.lib.stride_tricks import as_strided as ast
+
+import src.helpers as hp #uncomment for testing
+# import helpers as hp  #comment for testing
 
 class SIFT:
     
-    def __init__(self, sigma = 1.6, k = math.sqrt(2)):
+    def __init__(self, sigma = math.sqrt(2) / 2, k = math.sqrt(2)):
         self.k = k
         self.sigma = sigma
         self.scaleLvl = 5
@@ -21,12 +24,13 @@ class SIFT:
         """
         pyramid = self.build_pyramid(image)
         octaves = self.build_octaves(pyramid)
-        DoG = self.build_DoG(octaves)
-        extrema = self.compute_extrema(DoG)
-        extrema1 = self.remove_low_contrast(DoG, extrema)
-        extrema2 = self.remove_curvature(DoG, extrema1)
+        DoGs = self.build_DoGs(octaves)
+        self.precompute_params(DoGs)
+        extrema = self.compute_extrema(DoGs)
+        extrema1 = self.remove_low_contrast(DoGs, extrema)
+        extrema2 = self.remove_curvature(DoGs, extrema1)
         # self.save_images(extremum, self.octaveLvl, self.DoGLvl, "Extremum")
-        self.show_images(DoG) 
+        self.show_images(DoGs) 
     
 
     def build_pyramid(self, image):
@@ -52,49 +56,37 @@ class SIFT:
         :rtype: [[np.array]]
         """
         octaves = [[cv2.GaussianBlur(pyramid[i], ksize = (0, 0),
-            sigmaX = self.sigma * self.k ** j) 
+            sigmaX = self.sigma * self.k ** (2 * i + j)) 
             for j in range(self.scaleLvl)] 
             for i in range(self.octaveLvl)]
         return octaves
 
-    def build_DoG(self, octaves):
-        """Build Difference of Gaussians (DoG) from octaves. There are \
-                different scales for a specific octave, The DoG of level i is \
+    def build_DoGs(self, octaves):
+        """Build Difference of Gaussians (DoGs) from octaves. There are \
+                different scales for a specific octave, The DoGs of level i is \
                 the absolute difference between scale i and i + 1
         :param octaves: [[np.array]]
         """
-        DoG = [[cv2.subtract(octaves[i][j + 1], octaves[i][j])
+        DoGs = [[cv2.subtract(octaves[i][j + 1], octaves[i][j])
                 for j in range(self.DoGLvl)]
                 for i in range(self.octaveLvl)]
-        return DoG
-    def compute_extrema2(self, DoG):
-      extrema = np.array([[extremsi(Dog[i], j) for j in range(self.DoGLvl - 1)] for i in range(self.octavelvl - 1)])
-      extrema = np.array([extrema[i].reshape(1,np.product(extrema[i].shape)) for i in range(self.octavelvl - 1)])
-      return extrema 
-    def extremsi(DoGi, j):
-        imgs = np.array([DoGi[j + k] for k in range(-1,2) if ( ( (j + k) >= 0) and ((j + k) < self.DoGLvl - 1))])
-        eximgs = np.array([imgs[i][k - 1 : k + 2, l - 1 : l + 2] for i in range(imgs.shape[0])])
-        a = np.array([[(j, k, l) 
-        for l in range(1, img.shape[1] - 1)] 
-         for k in range(1, img.shape[0] - 1) 
-           if (DoGi[j][k, l] == eximgs.min() or (DoGi[j][k, l] == eximgs.max()) )])
-        return np.reshape(a, (1,np.product(a.shape)))
-    def compute_extrema(self, DoG):
+        return DoGs
+    
+    def compute_extrema(self, DoGs):
         """Computes extrema (minima and maxima) between the 27, 18 or 9 \
                 neighbours depending on the scale level for all octaves. \
                 for each (octave, scale) it computes a list of positions.
         
-        :param DoG: [[np.array]]
+        :param DoGs: [[np.array]]
         :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
         """
         extrema = []
         for i in range (self.octaveLvl):
             extrema.append([])
             for j in range (self.DoGLvl):
-                extrema[i].append([])
-                img = DoG[i][j]
-                img_top = DoG[i][j + 1] if j < self.DoGLvl - 1 else None
-                img_bot = DoG[i][j - 1] if j > 0 else None
+                img = DoGs[i][j]
+                img_top = DoGs[i][j + 1] if j < self.DoGLvl - 1 else None
+                img_bot = DoGs[i][j - 1] if j > 0 else None
                 for k in range (1, img.shape[0] - 1):
                     for l in range (1, img.shape[1] - 1):
                         m = img[k - 1: k + 2, l - 1 : l + 2]
@@ -105,41 +97,72 @@ class SIFT:
                             m = np.concatenate((m,
                                 img_bot[k - 1 : k + 2, l - 1 : l + 2]))
                         if img[k, l] == m.min() or img[k, l] == m.max():
-                            extrema[i].append((j ,k, l))
+                            extrema[i].append((j, k, l))
+            extrema[i] = np.array(extrema[i])
         return extrema
-
-
-    def remove_low_contrast(self, DoG, extrema):
+ 
+    def remove_low_contrast_opt(self, DoGs, extrema):
         """Removes low contrast in extrema points.
         
-        :param DoG: [[np.array]]
+        :param DoGs: [[np.array]]
         :param extrema: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)] 
         :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
         """
         ext = []
         for i in range(self.octaveLvl):
             ext.append([])
-            D = np.array(DoG[i])
-            grad = np.array(np.gradient(D)) / 255
-            hess = nd.hessian(D) / 255
-            for j in range(self.DoGLvl):
-                ext[i].append([])
-                for x, y in extrema[i][j]:
-                    g = grad[:, j, x, y]
-                    h = hess[:, :, j, x, y]
-                    e = np.linalg.lstsq(h, g)[0]
-                    e_j, e_x, e_y = j, x, y
-                    if (np.abs(e) > 0.5).any():
-                        continue
-                    d = D[j, x, y] + 0.5 * g.T.dot(e)
-                    if np.abs(d) > 0.03:
-                        ext[i][j].append((e_x, e_y))
+            D = np.array(DoGs[i])
+            gradient = np.array(np.gradient(D)) / 255
+            hessian = hp.hessian(D) / 255
+            gradient = np.transpose(gradient, (1, 2, 3, 0))
+            hessian = np.transpose(hessian, (2, 3, 4, 0, 1))
+            det = np.linalg.det(hessian)
+            j, y, x = np.array(np.where(det != 0))
+            grad = gradient[j, y, x]
+            hess = hessian[j, y, x]
+            D = D[j, y, x]
+            e = np.linalg.solve(hess, grad)
+            i1 = np.where(np.all(np.abs(e) < 0.5, axis = 1))
+            print(i1)
+            d = np.empty(e.shape[0])
+            for k in range(e.shape[0]):
+                d[k] = 0.5 * grad[k].dot(e[k])
+            d += D 
+            i2 = np.where(d > 0.03)[0]
+            i3 = np.intersect1d(i1, i2)
+            ext[i] = extrema[i][i3]
         return ext
  
-    def remove_curvature(self, DoG, extrema):
+    def remove_low_contrast(self, DoGs, extrema):
+        """Removes low contrast in extrema points.
+
+
+        :param DoGs: [[np.array]]
+        :param extrema: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)] 
+        :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
+        """
+        ext = []
+        for i in range(self.octaveLvl):
+            ext.append([])
+            D = np.array(DoGs[i])
+            grad = np.array(np.gradient(D))
+            hess = hp.hessian(D)
+            for j, x, y in extrema[i]:
+                g = grad[:, j, x, y]
+                h = hess[:, :, j, x, y]
+                e = np.linalg.lstsq(h, g)[0]
+                if (np.abs(e) > 0.5).any():
+                    continue
+                d = D[j, x, y] + 0.5 * g.T.dot(e)
+                if np.abs(d) > 0.03:
+                    ext[i].append((j, x, y))
+            ext[i] = np.array(ext[i])
+        return ext
+
+    def remove_curvature(self, DoGs, extrema = None):
         """Removes low contrast in extrema points.
         
-        :param DoG: [[np.array]]
+        :param DoGs: [[np.array]]
         :param extrema: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)] 
         :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
         """
@@ -147,20 +170,80 @@ class SIFT:
         tresh = (11 * 11) / 10
         for i in range(self.octaveLvl):
             ext.append([])
-            D = np.array(DoG[i])
-            hess = nd.hessian(D)
-            for j in range(self.DoGLvl):
-                ext[i].append([])
-                for x, y in extrema[i][j]:
-                    h = hess[:, :, j, x, y]
-                    det = np.linalg.det(h) 
-                    if det == 0:
-                    #    ext[i][j].append((x, y))
-                        continue
-                    if (np.trace(h) ** 2) / det <= tresh:
-                        ext[i][j].append((x, y))
+            D = np.array(DoGs[i])
+            hess = hp.hessian(D)
+            det = np.linalg.det(hess.T).T
+            tr = np.trace(hess)
+            det[det == 0] = 1e-7
+            idx = np.array(np.where(tr ** 2 / det < tresh))
+            ext[i] = np.array(idx.T)
+            if extrema is not None:
+                ext[i] = hp.intersect(ext[i], extrema[i])
         return ext
- 
+
+    def __gaussian_windows(self, desc = False):
+        windows = np.empty((self.octaveLvl, self.DoGLvl, 16, 16))
+        for i in range(self.octaveLvl):
+            for j in range(self.DoGLvl):
+                sigma = 8 if desc else self.sigma * self.k ** (2 * i + j) * 1.5
+                for x in range(16):
+                    for y in range(16):
+                        windows[i, j, x, y] = np.exp(((x - 8) ** 2 \
+                                + (y - 8) ** 2) / -2 * sigma ** 2) / \
+                                2 * math.pi * sigma ** 2
+        return windows
+
+
+    def precompute_params(self, DoGs):
+        """Precomputes all useful parameters
+        
+        :param DoGs: [[np.array]]
+        :rtype: None
+        """
+        self.gradients = [None] * self.octaveLvl
+        self.hessians = [None] * self.octaveLvl
+        self.hessians_det = [None] * self.octaveLvl
+        self.magnitudes = [None] * self.octaveLvl
+        self.orientations = [None] * self.octaveLvl
+        self.gaussian_widows = self.__gaussian_windows()
+        self.gaussian_widows_desc = self.__gaussian_windows(True)
+        for i in range(self.octaveLvl):
+            D = np.array(DoGs[i]) / 255
+            grad = np.array(np.gradient(D))
+            self.gradients[i] = grad
+            self.hessians[i] = hp.hessian(D)
+            self.hessians_det[i] = np.linalg.det(self.hessians[i].T).T
+            self.magnitudes[i] = np.linalg.norm(grad[1:], axis = 0)
+            theta = np.arctan2(grad[1], grad[2]) * 180 / math.pi
+            j, y, x = np.where(theta < 0)
+            theta[j, y, x] = 360 - theta[j, y, x]
+            self.orientations[i] = theta
+    
+    
+    def __get_histogram(self, extremum, size):
+        j, y, x = extremum
+        n, m = self.magnitudes[0].shape
+        y1 = max(y - 8, 0)
+        y2 = min(y + 8, n)
+        x1 = max(x - 8, 0)
+        x2 = min(x + 8, m)
+        window = self.magnitudes[j][y1 : y2, x1 : x2]
+        # apply gaussian on window
+        return window
+
+    def __get_descroptors(self, DoG, extrema):
+        descriptors = np.empty(shape = (extrema.shape + (128,)))
+        for i in range(self.octaveLvl):
+            D = np.array(DoG[i])
+            grad = np.gradient(D)
+            magn = np.linalg.norm(grad, axis = 0)
+            theta = grad[0] / grad[1]
+            for extremum in extrema[i]:
+                continue
+                #descriptor 
+        return descriptors
+
+
     def __show_images(self, images, title, n = 0):
         """Helper method, shows a series of images
         
@@ -217,3 +300,4 @@ class SIFT:
                 print(img_path)
                 cv2.imwrite(img_path, images[i][j])
         print(n * m, "images saved successfully")
+
