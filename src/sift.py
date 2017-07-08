@@ -207,4 +207,3 @@ class SIFT:
                         str(i) + '][' + str(j) + '].jpg'
                 cv2.imwrite(img, images[i][j])
         print(n * m, "images saved successfully")
-
