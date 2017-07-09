@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.matlib
 import cv2
 import math
 from time import time
@@ -196,23 +197,18 @@ class SIFT:
             theta[j, y, x] = 360 - theta[j, y, x]
             self.orientations[i] = theta
 
-    def get_descriptors(self, extrema):
+    def get_descriptors(self, keypoints):
         descriptors = [None] * self.octaveLvl
         for i in range(self.octaveLvl):
-            histograms = self.__get_histograms(i, extrema[i], 8)
-            orientations = histograms.argmax(axis = 1)
-            idx = np.arange(histograms.shape[0])
-            max_magn = histograms[idx, orientations]
-            key1 = np.array([extrema[i][:, 0], extrema[i][:, 1], \
-                    extrema[i][:, 2], orientations]).T
-            histograms[idx, orientations] = 0
-            orientations = histograms.argmax(axis = 1)
-            max_magn2 = histograms[idx, orientations]
-            idx = np.where(max_magn2 >= 0.8 * max_magn)[0]
-            key2 = np.array([extrema[i][idx, 0], extrema[i][idx, 1], \
-                    extrema[i][idx, 2], orientations[idx]]).T
-            keypoints[i] = np.concatenate((key1, key2), axis = 0)
- 
+            histograms = self.__get_histograms(i, keypoints[i][:, :3], 8, 16, 16)
+            norm = np.linalg.norm(histograms, axis = 1)
+            histograms /= np.matlib.repmat(norm, 128, 1).T
+            histograms[histograms > 0.2] = 0.2
+            norm = np.linalg.norm(histograms, axis = 1)
+            histograms /= np.matlib.repmat(norm, 128, 1).T
+            descriptors[i] = histograms
+        return descriptors
+
     def get_keypoints(self, extrema):
         keypoints = [None] * self.octaveLvl
         for i in range(self.octaveLvl):
@@ -231,8 +227,8 @@ class SIFT:
             keypoints[i] = np.concatenate((key1, key2), axis = 0)
         return keypoints
 
-    def __get_weighted_window(self, extremum, octave, bins):
-        window = self.__get_window(octave, extremum, 16)
+    def __get_weighted_window(self, extremum, octave, bins, size):
+        window = self.__get_window(octave, extremum, size)
         g_window = self.gaussian_widows if bins == 36 \
                 else self.gaussian_widows_desc
         g_window = g_window[octave, extremum[0]]
@@ -240,15 +236,32 @@ class SIFT:
         window[:, :, 1] //= (360 // bins)
         return window
 
+
+    def __get_descriptor(self, extremum, octave, bins, size, nb_hist):
+        desc = np.empty((nb_hist, bins))
+        w_size = int(size // math.sqrt(nb_hist))
+        window = self.__get_weighted_window(extremum, octave, bins, size)
+        window = window.reshape(size * size, 2)
+        windows = hp.blockshaped(window, w_size ** 2, 2)
+        for i in range(nb_hist):
+            desc[i, :] = np.bincount(windows[i, :, 1].astype(int), \
+                    weights = windows[i, :, 0], minlength = bins)
+        return desc.reshape(nb_hist * bins)
+
     def __get_histogram(self, extremum, octave, bins, size):
-        window = self.__get_weighted_window(extremum, octave, bins)
+        window = self.__get_weighted_window(extremum, octave, bins, size)
         tmp = window.reshape(size * size, 2)
-        return np.bincount(tmp[:, 1].astype(int), weights = tmp[:, 0], minlength = bins)
+        return np.bincount(tmp[:, 1].astype(int), weights = tmp[:, 0], \
+                minlength = bins)
     
-    def __get_histograms(self, octave, extrema, bins, size):
-        return np.apply_along_axis(self.__get_histogram, 1, \
-                extrema, octave, bins, size)
-    
+    def __get_histograms(self, octave, extrema, bins, size, nb_hist = 1):
+        if nb_hist == 1:
+            return np.apply_along_axis(self.__get_histogram, 1, \
+                    extrema, octave, bins, size)
+        else:
+            return np.apply_along_axis(self.__get_descriptor, 1, \
+                    extrema, octave, bins, size, nb_hist)
+
     def __get_window(self, octave, extremum, size = 16):
         """Returns window of size (size, size), each cell containing (magnitude, \
                 orientation) of the gradient in that position

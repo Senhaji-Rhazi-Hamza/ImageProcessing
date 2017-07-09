@@ -55,20 +55,12 @@ def test(argv):
     t = time()
     keypoints = sift.get_keypoints(extrema2)
     print('key_points: {:.2f}s'.format(time() - t))
+    t = time()
+    descriptors = sift.get_descriptors(keypoints)
+    print('descriptors: {:.2f}s'.format(time() - t))
     for i in range (sift.octaveLvl):
-        print('pixels in image: {}'.format(DoGs[i][0].shape[0] *
-            DoGs[i][0].shape[1]))
-        print('number of extrema in oct[{}] = {}'
-                .format(i, len(extrema[i]) // 3))
-        print('number of extrema1 in oct[{}] = {}'
-                .format(i, len(extrema1[i]) // 3))
-        print('number of extrema2 in oct[{}] = {}'
-                .format(i, len(extrema2[i]) // 3))
-        print('number of keypoints in oct[{}] = {}'
-                .format(i, len(keypoints[i]) // 3))
-
+        print(i, np.linalg.norm(descriptors[i], axis = 1))
 
 if __name__ == "__main__" :
     test(sys.argv[:])
-
 
