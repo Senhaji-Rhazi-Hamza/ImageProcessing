@@ -2,6 +2,7 @@ import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
+
 from src.sift import SIFT
 from time import time
 
@@ -36,13 +37,29 @@ def test(argv):
     sigma, k = parse_arguments(argv)
     sift = SIFT(sigma, k)
     img = cv2.imread(argv[1], 0)
+    t = time()
     pyramid = sift.build_pyramid(img)
     octaves = sift.build_octaves(pyramid)
-    DoG = sift.build_DoG(octaves)
-    extrema = sift.compute_extrema(DoG)
-    extrema1 = sift.remove_low_contrast(DoG, extrema)
-    extrema2 = sift.remove_curvature(DoG, extrema1)
+    DoGs = sift.build_DoGs(octaves)
+    sift.precompute_params(DoGs)
+    print('every thing before extrema: {:.2f}'.format(time() - t))
+    t = time()
+    extrema = sift.compute_extrema(DoGs)
+    print('extrema: {:.2f}s'.format(time() - t))
+    t = time()
+    extrema1 = sift.remove_low_contrast(DoGs, extrema)
+    print('low contrast: {:.2f}s'.format(time() - t))
+    t = time()
+    extrema2 = sift.remove_curvature(DoGs, extrema1)
+    print('curvatures: {:.2f}s'.format(time() - t))
+    t = time()
+    keypoints = sift.get_keypoints(extrema2)
+    print('key_points: {:.2f}s'.format(time() - t))
+    t = time()
+    descriptors = sift.get_descriptors(keypoints)
+    print('descriptors: {:.2f}s'.format(time() - t))
     for i in range (sift.octaveLvl):
+<<<<<<< HEAD
         for j in range (sift.DoGLvl):
             print('pixels in image: {}'.format(DoG[i][j].shape[0] *
                 DoG[i][j].shape[1]))
@@ -80,5 +97,7 @@ def test2(argv):
    # save_extrema(sift, DoGs, extrema1, 1, 'extremums/ext1')
    # save_extrema(sift, DoGs, extrema2, 1, 'extremums/ext2')
 
+
 if __name__ == "__main__" :
-  test2(sys.argv[:])
+    test(sys.argv[:])
+

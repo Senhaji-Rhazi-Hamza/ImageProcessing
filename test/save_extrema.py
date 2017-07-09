@@ -4,6 +4,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 from src.sift import SIFT
 
+from time import time
 import sys
 import cv2
 import numpy as np
@@ -30,39 +31,46 @@ def parse_arguments(argv):
             k = float(argv[3])
     return sigma, k
 
-
-def save_extremas(sift, DoG, extremas, n, m, title = 'extrema'):
+def save_extrema(sift, DoGs, extremas, n, title = 'extrema'):
     imgs = []
     for i in range(n):
         imgs.append([])
-        for j in range(m):
-            imgs[i].append([])
-            imgs[i][j] = np.zeros(shape = DoG[i][j].shape)
-            for x, y in extremas[i][j]:
-                imgs[i][j][x, y] = 255
+        s = (sift.scaleLvl, DoGs[i][0].shape[0], DoGs[i][0].shape[1])
+        imgs[i] = np.zeros(shape = s)
+        for s, y, x in extremas[i]:
+            imgs[i][s, y, x] = 255
     sift.save_images(imgs, title = title) 
-
 
 
 def test(argv):
     sigma, k = parse_arguments(argv)
     sift = SIFT(sigma, k)
     img = cv2.imread(argv[1], 0)
+    t = time()
     pyramid = sift.build_pyramid(img)
-    print('pyramid built')
+    print('pyramid built: {:.2f}'.format(time() - t))
+    t = time()
     octaves = sift.build_octaves(pyramid)
-    print('octaves built')
-    DoG = sift.build_DoG(octaves)
-    print('DoG built')
-    extrema = sift.compute_extrema(DoG)
-    print('extrema computed')
-    extrema1 = sift.remove_low_contrast(DoG, extrema)
-    print('extremas with low contrast removed')
-    extrema2 = sift.remove_curvature(DoG, extrema1)
-    print('extremas with high curvatures removed')
-    save_extremas(sift, DoG, extrema, 1, 1, 'extremums/ext')
-    save_extremas(sift, DoG, extrema1, 1, 1, 'extremums/ext1')
-    save_extremas(sift, DoG, extrema2, 1, 1, 'extremums/ext2')
+    print('octaves built: {:.2f}'.format(time() - t))
+    t = time()
+    DoGs = sift.build_DoGs(octaves)
+    print('DoGs built: {:.2f}'.format(time() - t))
+    t = time()
+    sift.precompute_params(DoGs)
+    print('precompute: {:.2f}'.format(time() - t))
+    t = time()
+    extrema = sift.compute_extrema(DoGs)
+    print('extrema computed: {:.2f}'.format(time() - t))
+    t = time()
+    extrema1 = sift.remove_low_contrast(DoGs, extrema)
+    print('extremas with low contrast removed: {:.2f}'.format(time() - t))
+    t = time()
+    extrema2 = sift.remove_curvature(DoGs, extrema1)
+    print('extremas with high curvatures removed: {:.2f}'.format(time() - t)) 
+    
+    save_extrema(sift, DoGs, extrema, 1, 'extremums/ext')
+    save_extrema(sift, DoGs, extrema1, 1, 'extremums/ext1')
+    save_extrema(sift, DoGs, extrema2, 1, 'extremums/ext2')
 
 if __name__ == "__main__" :
     test(sys.argv[:])
