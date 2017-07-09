@@ -5,8 +5,8 @@ import math
 from time import time
 from numpy.lib.stride_tricks import as_strided as ast
 
-import src.helpers as hp #uncomment for testing
-# import helpers as hp  #comment for testing
+# import src.helpers as hp #uncomment for testing
+import helpers as hp  #comment for testing
 
 class SIFT:
     
@@ -17,22 +17,41 @@ class SIFT:
         self.octaveLvl = 4
         self.DoGLvl = self.scaleLvl - 1
    
-    def extract_features(self, image):
+    def extract_features(self, image, silent = False):
         """Extract SIFT features from image.
 
         :param image: np.array,
         :rtype: np array
         """
+        t = time()
         pyramid = self.build_pyramid(image)
+        if not silent: print('pyramid built in: {:.2f}s'.format(time() - t))
+        t = time()
         octaves = self.build_octaves(pyramid)
+        if not silent: print('octaves built in: {:.2f}s'.format(time() - t))
+        t = time()
         DoGs = self.build_DoGs(octaves)
+        if not silent: print('DoGs built in: {:.2f}s'.format(time() - t))
+        t = time()
         self.precompute_params(DoGs)
+        if not silent: print('precomputed parameters in: {:.2f}s'.format(time() - t))
+        t = time()
         extrema = self.compute_extrema(DoGs)
+        if not silent: print('computed extrema in: {:.2f}s'.format(time() - t))
+        t = time()
         extrema1 = self.remove_low_contrast(DoGs, extrema)
+        if not silent: print('low contrast extrema removed in: {:.2f}s'.format(time() - t))
+        t = time()
         extrema2 = self.remove_curvature(DoGs, extrema1)
-        # self.save_images(extremum, self.octaveLvl, self.DoGLvl, "Extremum")
-        self.show_images(DoGs) 
-    
+        if not silent: print('low curvature extrema removed in: {:.2f}s'.format(time() - t))
+        t = time()
+        keypoints = self.get_keypoints(extrema2)
+        if not silent: print('computed keypoints orientations in: {:.2f}s'.format(time() - t))
+        t = time()
+        descriptors = self.get_descriptors(keypoints)
+        if not silent: print('computed descriptors in: {:.2f}s'.format(time() - t))
+        return keypoints, descriptors
+
 
     def build_pyramid(self, image):
         """Builds the pyramid of an image. The pyramid has octaveLvl levels. \
