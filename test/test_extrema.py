@@ -47,13 +47,15 @@ def test(argv):
     extrema = sift.compute_extrema(DoGs)
     print('extrema: {:.2f}s'.format(time() - t))
     t = time()
-    # extrema1 = sift.remove_low_contrast(DoGs, extrema)
-    extrema1 = sift.remove_low_contrast_opt(DoGs, extrema)
+    extrema1 = sift.remove_low_contrast(DoGs, extrema)
     print('low contrast: {:.2f}s'.format(time() - t))
     t = time()
     extrema2 = sift.remove_curvature(DoGs, extrema1)
     print('curvatures: {:.2f}s'.format(time() - t))
-    for i in range (1):   # sift.octaveLvl):
+    t = time()
+    key_points = sift.get_keypoints(extrema2)
+    print('key_points: {:.2f}s'.format(time() - t))
+    for i in range (sift.octaveLvl):
         print('pixels in image: {}'.format(DoGs[i][0].shape[0] *
             DoGs[i][0].shape[1]))
         print('number of extrema in oct[{}] = {}'
