@@ -200,8 +200,20 @@ class SIFT:
     def get_keypoints(self, extrema):
         keypoints = [None] * self.octaveLvl
         for i in range(self.octaveLvl):
-            hist = self.__get_histograms(i, extrema[i], 36)
-            
+            histograms = self.__get_histograms(i, extrema[i], 36)
+            orientations = histograms.argmax(axis = 1)
+            idx = np.arange(histograms.shape[0])
+            max_magn = histograms[idx, orientations]
+            key1 = np.array([extrema[i][:, 0], extrema[i][:, 1], \
+                    extrema[i][:, 2], orientations]).T
+            histograms[idx, orientations] = 0
+            orientations = histograms.argmax(axis = 1)
+            max_magn2 = histograms[idx, orientations]
+            idx = np.where(max_magn2 >= 0.8 * max_magn)[0]
+            key2 = np.array([extrema[i][idx, 0], extrema[i][idx, 1], \
+                    extrema[i][idx, 2], orientations[idx]]).T
+            keypoints[i] = np.concatenate((key1, key2), axis = 0)
+        return keypoints
 
     def __get_histogram(self, extremum, octave, bins):
         histogram = np.zeros((bins))
