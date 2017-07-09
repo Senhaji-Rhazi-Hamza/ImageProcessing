@@ -196,11 +196,27 @@ class SIFT:
             theta[j, y, x] = 360 - theta[j, y, x]
             self.orientations[i] = theta
 
-
+    def get_descriptors(self, extrema):
+        descriptors = [None] * self.octaveLvl
+        for i in range(self.octaveLvl):
+            histograms = self.__get_histograms(i, extrema[i], 8)
+            orientations = histograms.argmax(axis = 1)
+            idx = np.arange(histograms.shape[0])
+            max_magn = histograms[idx, orientations]
+            key1 = np.array([extrema[i][:, 0], extrema[i][:, 1], \
+                    extrema[i][:, 2], orientations]).T
+            histograms[idx, orientations] = 0
+            orientations = histograms.argmax(axis = 1)
+            max_magn2 = histograms[idx, orientations]
+            idx = np.where(max_magn2 >= 0.8 * max_magn)[0]
+            key2 = np.array([extrema[i][idx, 0], extrema[i][idx, 1], \
+                    extrema[i][idx, 2], orientations[idx]]).T
+            keypoints[i] = np.concatenate((key1, key2), axis = 0)
+ 
     def get_keypoints(self, extrema):
         keypoints = [None] * self.octaveLvl
         for i in range(self.octaveLvl):
-            histograms = self.__get_histograms(i, extrema[i], 36)
+            histograms = self.__get_histograms(i, extrema[i], 36, 16)
             orientations = histograms.argmax(axis = 1)
             idx = np.arange(histograms.shape[0])
             max_magn = histograms[idx, orientations]
@@ -215,23 +231,26 @@ class SIFT:
             keypoints[i] = np.concatenate((key1, key2), axis = 0)
         return keypoints
 
-    def __get_histogram(self, extremum, octave, bins):
-        histogram = np.zeros((bins))
-        window = self.__get_window(octave, extremum)
+    def __get_weighted_window(self, extremum, octave, bins):
+        window = self.__get_window(octave, extremum, 16)
         g_window = self.gaussian_widows if bins == 36 \
                 else self.gaussian_widows_desc
         g_window = g_window[octave, extremum[0]]
         window[:, :, 0] *= g_window
         window[:, :, 1] //= (360 // bins)
-        tmp = window.reshape(16 * 16, 2)
-        return np.bincount(tmp[:, 1].astype(int), weights = tmp[:, 0], minlength = bins)
+        return window
 
-    def __get_histograms(self, octave, extrema, bins):
-        return np.apply_along_axis(self.__get_histogram, 1, \
-                extrema, octave, bins)
+    def __get_histogram(self, extremum, octave, bins, size):
+        window = self.__get_weighted_window(extremum, octave, bins)
+        tmp = window.reshape(size * size, 2)
+        return np.bincount(tmp[:, 1].astype(int), weights = tmp[:, 0], minlength = bins)
     
-    def __get_window(self, octave, extremum):
-        """Returns window of size 16 by 16, each cell containing (magnitude, \
+    def __get_histograms(self, octave, extrema, bins, size):
+        return np.apply_along_axis(self.__get_histogram, 1, \
+                extrema, octave, bins, size)
+    
+    def __get_window(self, octave, extremum, size = 16):
+        """Returns window of size (size, size), each cell containing (magnitude, \
                 orientation) of the gradient in that position
         
         :param octave: Int, the octave in which the window is.
@@ -239,25 +258,17 @@ class SIFT:
                 center of the window.
         :rtype: np.array((16, 16, 2))
         """
-        window = np.zeros((16, 16, 2))
+        k = size // 2
+        window = np.zeros((size, size, 2))
         j, y, x = extremum
         n, m = self.magnitudes[octave].shape[1:]
-        y1, y2 = max(y - 8, 0), min(y + 8, n)
-        x1, x2 = max(x - 8, 0), min(x + 8, m)
-        y3, y4 = 8 - (y - y1), 8 + (y2 - y)
-        x3, x4 = 8 - (x - x1), 8 + (x2 - x)
+        y1, y2 = max(y - k, 0), min(y + k, n)
+        x1, x2 = max(x - k, 0), min(x + k, m)
+        y3, y4 = k - (y - y1), k + (y2 - y)
+        x3, x4 = k - (x - x1), k + (x2 - x)
         window[y3 : y4, x3 : x4, 0] = self.magnitudes[octave][j, y1 : y2, x1 : x2]
         window[y3 : y4, x3 : x4, 1] = self.orientations[octave][j, y1 : y2, x1 : x2]
         return window
-
-    def __get_descroptors(self, DoG, extrema):
-        descriptors = np.empty(shape = (extrema.shape + (128,)))
-        for i in range(self.octaveLvl):
-            for extremum in extrema[i]:
-                continue
-                #descriptor 
-        return descriptors
-
 
     def __show_images(self, images, title, n = 0):
         """Helper method, shows a series of images
