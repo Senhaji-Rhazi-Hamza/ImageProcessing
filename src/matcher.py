@@ -19,6 +19,7 @@ def matchers(kp1, des1, kp2, des2, k):
   n, m = len(des1), len(des2)
   assert(k > 0), "number of key point must be > 0"
   size = min(n,m,k)
-  pairs, mins = getPairsMins(ditances(descs1, descs2))
+  pairs, mins = getPairsMins(ditances(des1, des2))
   avg = mins[:k].mean()
+  pairkeypoins = np.array([(kp1[pairs[i][0]],kp2[pairs[i][1]]) for i in range(len(pairs))])
   return pairs[:k], avg
