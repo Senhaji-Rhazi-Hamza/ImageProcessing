@@ -102,7 +102,7 @@ class SIFT:
         return extrema
 
  
-    def remove_low_contrast_opt(self, DoGs, extrema):
+    def remove_low_contrast(self, DoGs, extrema):
         """Removes low contrast in extrema points.
         
         :param DoGs: [[np.array]]
@@ -112,17 +112,15 @@ class SIFT:
         ext = []
         for i in range(self.octaveLvl):
             ext.append([])
-            D = np.array(DoGs[i])
-            gradient = np.array(np.gradient(D)) / 255
-            hessian = hp.hessian(D) / 255
-            gradient = np.transpose(gradient, (1, 2, 3, 0))
-            hessian = np.transpose(hessian, (2, 3, 4, 0, 1))
+            D = np.array(DoGs[i]) 
+            gradient = np.transpose(self.gradients[i], (1, 2, 3, 0))
+            hessian = np.transpose(self.hessians[i], (2, 3, 4, 0, 1))
             det = np.linalg.det(hessian)
             j, y, x = np.array(np.where(det != 0))
             ext[i] = hp.intersect(extrema[i], np.array([j, y, x]).T)
             grad = gradient[j, y, x]
             hess = hessian[j, y, x]
-            D = D[j, y, x]
+            D = D[j, y, x] 
             e = np.linalg.solve(hess, grad)
             i1 = np.where(np.all(np.abs(e) < 0.5, axis = 1))[0]
             d = np.empty(e.shape[0])
@@ -133,33 +131,7 @@ class SIFT:
             i3 = np.intersect1d(i1, i2)
             ext[i] = hp.intersect(ext[i], np.array([j[i3], y[i3], x[i3]]).T)
         return ext
- 
-    def remove_low_contrast(self, DoGs, extrema):
-        """Removes low contrast in extrema points.
 
-
-        :param DoGs: [[np.array]]
-        :param extrema: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)] 
-        :rtype: [[[(Int, Int)]]], ex: [octave][scale] = [(x, y)]
-        """
-        ext = []
-        for i in range(self.octaveLvl):
-            ext.append([])
-            D = np.array(DoGs[i])
-            grad = np.array(np.gradient(D))
-            # grad = self.gradients[i]
-            hess = hp.hessian(D)
-            for j, x, y in extrema[i]:
-                g = grad[:, j, x, y]
-                h = hess[:, :, j, x, y]
-                e = np.linalg.lstsq(h, g)[0]
-                if (np.abs(e) > 0.5).any():
-                    continue
-                d = D[j, x, y] + 0.5 * g.T.dot(e)
-                if np.abs(d) > 0.03:
-                    ext[i].append((j, x, y))
-            ext[i] = np.array(ext[i])
-        return ext
 
     def remove_curvature(self, DoGs, extrema = None):
         """Removes low contrast in extrema points.
@@ -172,8 +144,7 @@ class SIFT:
         tresh = (11 * 11) / 10
         for i in range(self.octaveLvl):
             ext.append([])
-            D = np.array(DoGs[i])
-            hess = hp.hessian(D)
+            hess = self.hessians[i]
             det = np.linalg.det(hess.T).T
             tr = np.trace(hess)
             det[det == 0] = 1e-7
@@ -204,17 +175,15 @@ class SIFT:
         """
         self.gradients = [None] * self.octaveLvl
         self.hessians = [None] * self.octaveLvl
-        self.hessians_det = [None] * self.octaveLvl
         self.magnitudes = [None] * self.octaveLvl
         self.orientations = [None] * self.octaveLvl
         self.gaussian_widows = self.__gaussian_windows()
         self.gaussian_widows_desc = self.__gaussian_windows(True)
         for i in range(self.octaveLvl):
-            D = np.array(DoGs[i]) / 255
-            grad = np.array(np.gradient(D))
+            D = np.array(DoGs[i]) 
+            grad = np.array(np.gradient(D)) / 255
             self.gradients[i] = grad
-            self.hessians[i] = hp.hessian(D)
-            self.hessians_det[i] = np.linalg.det(self.hessians[i].T).T
+            self.hessians[i] = hp.hessian(D) / 255
             self.magnitudes[i] = np.linalg.norm(grad[1:], axis = 0)
             theta = np.arctan2(grad[1], grad[2]) * 180 / math.pi
             j, y, x = np.where(theta < 0)
