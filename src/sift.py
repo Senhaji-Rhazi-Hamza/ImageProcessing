@@ -90,20 +90,9 @@ class SIFT:
         DoGs = [[cv2.subtract(octaves[i][j + 1], octaves[i][j])
                 for j in range(self.DoGLvl)]
                 for i in range(self.octaveLvl)]
-        return DoG
-    def compute_extrema2(self, DoG):
-      extrema = np.array([[self.extremsi(DoG[i], j) for j in range(self.DoGLvl - 1)] for i in range(self.octaveLvl - 1)])
-      extrema = np.array([extrema[i].reshape(1,np.product(extrema[i].shape)) for i in range(self.octaveLvl - 1)])
-      return extrema
-    def eximgs(self, DoGi, j,k,l):
-      imgs = np.array([DoGi[j + k] for k in range(-1,2) if ( ( (j + k) >= 0) and ((j + k) < self.DoGLvl - 1))])
-      eximgs = np.array([imgs[i][k - 1 : k + 2, l - 1 : l + 2]  for i in range(imgs.shape[0])])
-      return eximgs
-    def extremsi(self, DoGi, j):
-        a = np.array([[(j, k, p)  for p in range(1, DoGi[j].shape[1] - 1) 
-        if (DoGi[j][k, p] == self.eximgs(DoGi,j,k, p).min() or (DoGi[j][k, p] == self.eximgs(DoGi,j,k, p).max()) )]  
-          for k in range(1, DoGi[j].shape[0] - 1)])
-        return np.reshape(a, (1,np.product(a.shape))) 
+        return DoGs
+
+    
     def compute_extrema(self, DoGs):
         """Computes extrema (minima and maxima) between the 27, 18 or 9 \
                 neighbours depending on the scale level for all octaves. \
