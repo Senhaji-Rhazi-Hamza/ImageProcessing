@@ -3,6 +3,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir) 
 from src.sift import SIFT
+from time import time
 
 import sys
 import cv2
@@ -30,7 +31,7 @@ def parse_arguments(argv):
             k = float(argv[3])
     return sigma, k
 
-
+'''
 def test(argv):
     sigma, k = parse_arguments(argv)
     sift = SIFT(sigma, k)
@@ -50,10 +51,34 @@ def test(argv):
             print('number of extrema1 in [{}][{}] = {}'
                     .format(i, j, len(extrema1[i][j]) // 2))
             print('number of extrema2 in [{}][{}] = {}'
-                    .format(i, j, len(extrema2[i][j]) // 2))
-
+                .format(i, j, len(extrema2[i][j]) // 2))
+'''
+def test2(argv):
+  sigma, k = parse_arguments(argv)
+  sift = SIFT(sigma, k)
+  img = cv2.imread(argv[1], 0)
+  t = time()
+  pyramid = sift.build_pyramid(img)
+  print('pyramid built: {:.2f}'.format(time() - t))
+  t = time()
+  octaves = sift.build_octaves(pyramid)
+  print('octaves built: {:.2f}'.format(time() - t))
+  t = time()
+  DoGs = sift.build_DoG(octaves)
+  print('DoGs built: {:.2f}'.format(time() - t))
+  t = time()
+  extrema = sift.compute_extrema2(DoGs)
+  print('extrema computed: {:.2f}'.format(time() - t))
+  t = time()
+#    extrema1 = sift.remove_low_contrast_opt(DoGs, extrema1)
+    #extrema1 = sift.remove_low_contrast(DoGs, extrema)
+    #print('extremas with low contrast removed: {:.2f}'.format(time() - t))
+    #t = time()
+    #extrema2 = sift.remove_curvature(DoGs, extrema1)
+   # print('extremas with high curvatures removed: {:.2f}'.format(time() - t))
+   # save_extrema(sift, DoGs, extrema, 1, 'extremums/ext')
+   # save_extrema(sift, DoGs, extrema1, 1, 'extremums/ext1')
+   # save_extrema(sift, DoGs, extrema2, 1, 'extremums/ext2')
 
 if __name__ == "__main__" :
-    test(sys.argv[:])
-
-
+  test2(sys.argv[:])
