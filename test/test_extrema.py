@@ -58,7 +58,12 @@ def test(argv):
     descriptors = sift.get_descriptors(keypoints)
     print('descriptors: {:.2f}s'.format(time() - t))
     for i in range (sift.octaveLvl):
+<<<<<<< HEAD
       print(descriptors[i].shape)
+=======
+        print(descriptors[i].shape)
+
+>>>>>>> a4fa68e3a27ff5228d175ce9e91246ecc7a016f9
 if __name__ == "__main__" :
     test(sys.argv[:])
 

@@ -67,10 +67,16 @@ def test(argv):
     t = time()
     extrema2 = sift.remove_curvature(DoGs, extrema1)
     print('extremas with high curvatures removed: {:.2f}'.format(time() - t)) 
-    
-    save_extrema(sift, DoGs, extrema, 1, 'extremums/ext')
-    save_extrema(sift, DoGs, extrema1, 1, 'extremums/ext1')
-    save_extrema(sift, DoGs, extrema2, 1, 'extremums/ext2')
+    t = time()
+    keypoints = sift.get_keypoints(extrema2)
+    print('key_points: {:.2f}s'.format(time() - t))
+    t = time()
+    descriptors = sift.get_descriptors(keypoints)
+    print('descriptors: {:.2f}s'.format(time() - t))
+
+    save_extrema(sift, DoGs, extrema, 3, 'extremums/ext')
+    save_extrema(sift, DoGs, extrema1, 3, 'extremums/ext1')
+    save_extrema(sift, DoGs, extrema2, 3, 'extremums/ext2')
 
 if __name__ == "__main__" :
     test(sys.argv[:])
