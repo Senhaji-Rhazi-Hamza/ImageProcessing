@@ -2,7 +2,8 @@ import sys
 import cv2
 import numpy as np
 import math
-from tester import match
+#import tester
+from tester import match2
 from sift import SIFT
 
 
@@ -43,8 +44,8 @@ def main(argv):
             img = cv2.imread(path_test, 0)
             print('still computing...')
             kp_test, desc_test = sift.extract_features(img, silent)
-            q = input("enter:\n't' to test another image\n'r' to restart\nany other key to quit: ")
-            #TODO Hamza match 
+            q = input("enter:\n't' to test another image\n'r' to restart\nany other key to quit: ") 
+            match2(kp_test, desc_test, kp_train, desc_train)            
 
 if __name__ == "__main__" :
     main(sys.argv[:])
