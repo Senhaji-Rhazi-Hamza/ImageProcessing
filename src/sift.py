@@ -5,7 +5,7 @@ import math
 from time import time
 from numpy.lib.stride_tricks import as_strided as ast
 
-# import src.helpers as hp #uncomment for testing
+#import src.helpers as hp #uncomment for testing
 import helpers as hp  #comment for testing
 
 class SIFT:
